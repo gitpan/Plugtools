@@ -1,0 +1,15 @@
+Changes
+MANIFEST
+Makefile.PL
+README
+lib/Plugtools.pm
+t/00-load.t
+t/pod-coverage.t
+t/pod.t
+bin/pluadd
+bin/plupass
+bin/plurm
+bin/plgclean
+bin/plgrm
+bin/plgadd
+bin/plgmod
