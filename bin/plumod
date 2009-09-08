@@ -31,147 +31,114 @@ $Getopt::Std::STANDARD_HELP_VERSION = 1;
 
 #version function
 sub main::VERSION_MESSAGE {
-        print "pluadd 0.0.1\n";
+        print "plumod 0.0.0\n";
 }
 
 #print help
 sub main::HELP_MESSAGE {
         print "\n".
-		      "-u <user name>  - The user to add.\n".
-			  "-U <UID>  - The UID for the new user.\n".
-			  "-g <group name>  - The primary group name for the user.\n".
-			  "-G <GID>  - The GID to use for when adding the primary group.\n".
-			  "-c <gecos>  - The GECOS value for new user.\n".
-			  "-h <home>  - The home directory for the new user.\n".
-			  "-s <shell>  - The shell for the new user.\n".
-			  "-H <createHome>  - A boolean value describing if the home directory should be created.\n".
-			  "-S <skel>  - The skeleton to use for the directory to use.\n".
-			  "-p <chmodHome>  - A boolean value describing if the home directory should be chmoded or not.\n".
-			  "-P <chmodValue>  - The chmod value for home.\n".
-			  "-O <chownHome>  - A boolean value describing if the home directory should be chowned or not.\n".
-			  "-l  - Call \$entry->dump on any new objects.\n".
+		      "-u <user>  - The user to remove.\n".
+			  "-a <action>  - The action to perform.\n".
+			  "-g <GID>  - The GID to change the user to.\n".
+			  "-U <UID>  - The UID to change.\n".
+			  "-c <GECOS>  - The GECOS to set the user to.\n".
+			  "-l  - Print any changes to LDAP.\n".
 			  "\n".
-			  "createHome:\n".
-			  "The this overrides the default value. If nothing is specified, the default value is '1'.\n".
+			  "actions:\n".
+			  "gecos - Change the GECOS field for a user.\n".
+			  "gid - Change the primary GID for a user.\n".
+			  "uid - Change the UID for a user.\n".
 			  "\n".
-			  "skel:\n".
-			  "This overrides the default value. If nothing is specified, '/etc/skel' is used.\n".
-			  "\n".
-			  "chownHome:\n".
-			  "This overrides the default value. If nothing is specified, '1' is used.\n".
-			  "\n".
-			  "chownValue:\n".
-			  "This overrides te default value. If nothing is specified, '640' is used.\n".
-			  "\n".
-			  "For more info, see the the perldocs for Plugtools and pluadd...\n".
-			  "perldoc pluadd\n".
+			  "For more info, see the the perldocs for Plugtools and plurm...\n".
+			  "perldoc plurm\n".
 			  "perldoc Plugtools\n";
 }
 
 #gets the options
 my %opts=();
-getopts('u:U:g:G:c:h:s:H:S:p:P:O:l', \%opts);
+getopts('u:a:g:U:c:l', \%opts);
 
 if (!defined($opts{u})) {
-	warn('pluadd:254: No user specified.');
+	warn('plgrm:254: No user name specified');
 	exit 254;
+}
+
+if (!defined($opts{u})) {
+	warn('plgrm:253: No action specified');
+	exit 253;
 }
 
 my $pt=Plugtools->new;
 if ($pt->{error}) {
-	warn('pluadd: Failed to initialize the Plugtools object');
+	warn('plgrm: Failed to initialize the Plugtools object');
 	exit $pt->{error};
 }
 
-$pt->addUser({
-			  user=>$opts{u},
-			  uid=>$opts{U},
-			  group=>$opts{g},
-			  gid=>$opts{G},
-			  gecos=>$opts{c},
-			  shell=>$opts{s},
-			  home=>$opts{h},
-			  createHome=>$opts{H},
-			  chownHome=>$opts{O},
-			  chmodHome=>$opts{p},
-			  chmodValue=>$opts{P}
-			  });
-if ($pt->{error}) {
-	warn('pluadd: Failed to add the user');
-	exit $pt->{error};
+if ($opts{a} eq 'gecos') {
+	$pt->userGECOSchange({
+						  user=>$opts{u},
+						  gecos=>$opts{c},
+						  dump=>$opts{l},
+						  });
+	if ($pt->{error}) {
+		warn('plgrm: Failed to remove the group');
+		exit $pt->{error};
+	}
+}
+
+if ($opts{a} eq 'gid') {
+	$pt->userGIDchange({
+						  user=>$opts{u},
+						  gid=>$opts{g},
+						  dump=>$opts{l},
+						  });
+	if ($pt->{error}) {
+		warn('plgrm: Failed to remove the group');
+		exit $pt->{error};
+	}
+}
+
+if ($opts{a} eq 'uid') {
+	$pt->userGIDchange({
+						  user=>$opts{u},
+						  uid=>$opts{U},
+						  dump=>$opts{l},
+						  });
+	if ($pt->{error}) {
+		warn('plgrm: Failed to remove the group');
+		exit $pt->{error};
+	}
 }
 
 exit 0;
 
 =head1 NAME
 
-pluadd - Add a user to LDAP.
+plumod - Modify a user in LDAP.
 
 =head1 SYNOPSIS
 
-plurm B<-u> <user> [B<-U> <UID>] [B<-g> <group>] [B<-G> <GID>] [B<-c> <GECOS>] [B<-h> <home>] [B<-s> <shell>] [B<-S> <skel>] [B<-H> (0|1)] [B<-O> (0|1)] [B<-p> (0|1)] [B<-P> <chmodValue>] [B<-l>]
+plurm B<-u> <user> [B<-H> (0|1)] [B<-G> (0|1)]
 
 =head1 SWITCHES
 
 =head2 -u <user>
 
-This specifies the user to add.
+This specifies the user to remove.
 
-=head2 -U <UID>
 
-The UID for the new user.
-
-=head2 -g <group>
-
-The group primary group for the user.
-
-=head2 -G <GID>
-
-The GID for the primary group.
-
-=head2 -c <GECOS>
-
-The GECOS field for the new user.
-
-=head2 -h <home>
-
-The home directory for the new user.
-
-=head2 -s <shell>
-
-The shell for the new user.
-
-=head2 -S <skel>
-
-The skeleton directory to use if the user directory is to be created.
-
-=head2 -H (0|1)
-
-Override the default of config specified setting creating the home directory.
-
-=head2 -O (0|1)
-
-Override the default of config specified setting chowning the home directory.
-
-=head2 -p (0|1)
-
-Override the default of config specified setting chmoding the home directory.
-
-=head2 -P <chownValue>
-
-Override the default of config specified setting number to use for chmoding the home directory.
-
-=head2 -l
-
-Print any newly created or modified entries.
 
 =head1 EXIT CODES
 
 If the exit code is not listed below, it is what was the error code returned by Plugtools.
 
-=head 254
+=head2 254
 
 No user specified.
+
+=head2 253
+
+No action specified.
 
 =head1 AUTHOR
 
@@ -213,6 +180,6 @@ Plugtools
 
 =head1 README
 
-pluadd - Add a user to LDAP.
+plumod - Modify a user in LDAP.
 
 =cut

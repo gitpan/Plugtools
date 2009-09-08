@@ -18,7 +18,7 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 0.0.0
+Version 0.1.0
 
 =cut
 
