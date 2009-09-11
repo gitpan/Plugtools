@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 0.1.0
+Version 1.0.0
 
 =cut
 
-our $VERSION = '0.0.0';
+our $VERSION = '1.0.0';
 
 
 =head1 SYNOPSIS
@@ -43,7 +43,7 @@ sub new {
 	bless $self;
 
 	$self->readConfig(xdg_config_home().'/plugtoolsrc');
-
+ 
 	return $self;
 }
 
@@ -178,6 +178,20 @@ sub addGroup{
 	if ($self->{error}) {
 		warn('Plugtools addGroup: Failed to connect to LDAP');
 		return undef;
+	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginAddGroup})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginAddGroup',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools addGroup: plugin errored');
+			return undef;
+		}
 	}
 
 	#add it
@@ -383,16 +397,25 @@ sub addUser{
 									 primary=>$self->{ini}->{''}->{userPrimary},
 									 });
 
-	#dump it if asked
-	if ($args{dump}) {
-		$entry->dump;
-	}
-
 	#connect to the LDAP server
 	my $ldap=$self->connect();
 	if ($self->{error}) {
 		warn('Plugtools addUser: Failed to connect to LDAP');
 		return undef;
+	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginAddUser})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginAddUser',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools addUser: plugin errored');
+			return undef;
+		}
 	}
 
 	#add it
@@ -403,6 +426,11 @@ sub addUser{
 		                     $mesg->{errorMessage}.'"';
 		warn('Plugtools addUser:19: '.$self->{errorString});
 		return undef;
+	}
+
+	#dump it if needed
+	if ($args{dump}) {
+		$entry->dump;
 	}
 
 	#create the home directory if needed, after getting the required values
@@ -977,6 +1005,20 @@ sub groupAddUser{
 
 	$entry->add(memberUid=>$args{user});
 
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginGroupAddUser})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginGroupAddUser',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools groupAddUser: plugin errored');
+			return undef;
+		}
+	}
+
 	#update the entry
 	my $mesg2=$entry->update($ldap);
 	if (!$mesg2->{errorMessage} eq '') {
@@ -1102,6 +1144,20 @@ sub groupGIDchange {
 
 	$entry->delete(gidNumber=>$gid);
 	$entry->add(gidNumber=>$args{gid});
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginGroupGIDchange})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginGroupGIDchange',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools groupGIDchange: plugin errored');
+			return undef;
+		}
+	}
 
 	#update the entry
 	my $mesg2=$entry->update($ldap);
@@ -1273,6 +1329,20 @@ sub groupRemoveUser{
 	}
 
 	$entry->delete(memberUid=>$args{user});
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginGroupRemoveUser})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginGroupRemoveUser',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools groupRemoveUser: plugin errored');
+			return undef;
+		}
+	}
 
 	#update the entry
 	my $mesg2=$entry->update($ldap);
@@ -1624,6 +1694,133 @@ sub onlyMember{
 	return 1;
 }
 
+=head2 plugin
+
+This processes series plugins.
+
+=head3 opts hash
+
+This is the first required hash.
+
+=head4 ldap
+
+This is the current LDAP connect.
+
+=head4 do
+
+This contains the variable it should reference for what plugins to run.
+
+=head4 entry
+
+This is the LDAP entry to work on.
+
+=head3 args hash
+
+This is the hash that was passed to the function calling the plugin.
+
+=cut
+
+sub plugin{
+	my $self=$_[0];
+	my $opts;
+	my %opts;
+	if(defined($_[1])){
+		%opts= %{$_[1]};
+	};
+	my %args;
+	if(defined($_[2])){
+		%args= %{$_[2]};
+	};
+
+	#error if no LDAP connection is present
+	if (!defined($opts{ldap})) {
+		$self->{error}=38;
+		$self->{errorString}='No LDAP connection passed';
+		warn('Plugtools plugin:38: '.$self->{errorString});
+		return undef;
+	}
+
+	#error if no LDAP connection is present
+	if (!defined($opts{do})) {
+		$self->{error}=39;
+		$self->{errorString}='What selection of plugins to process has not been specified. $opts{do} is undefined';
+		warn('Plugtools plugin:39: '.$self->{errorString});
+		return undef;
+	}
+
+	#error if no LDAP connection is present
+	if (!defined($opts{entry})) {
+		$self->{error}=42;
+		$self->{errorString}='No Net::LDAP::Entry passed. $opts{entry} is undefined';
+		warn('Plugtools plugin:42: '.$self->{errorString});
+		return undef;
+	}
+
+	#error if the LDAP entry that is specified is not a Net::LDAP::Entry object
+	if (ref($opts{entry}) ne 'Net::LDAP::Entry') {
+		$self->{error}=43;
+		$self->{errorString}='$opts{entry} is not a Net::LDAP::Entry object';
+		warn('Plugtools plugin:43: '.$self->{errorString});
+		return undef;
+	}
+
+	#error if no entry connection is present
+	if (ref($opts{ldap}) ne 'Net::LDAP') {
+		$self->{error}=44;
+		$self->{errorString}='$opts{ldap} is not a Net::LDAP object';
+		warn('Plugtools plugin:44: '.$self->{errorString});
+		return undef;
+	}
+
+	#
+	$opts{self}=$self;
+
+	#make sure the specified config exists
+	if (!defined( $self->{ini}->{''}->{$opts{do}} )) {
+		$self->{error}=40;
+		$self->{errorString}='The variable "'.$opts{40}.'" does not exist in the config';
+		warn('Plugtools plugin:40: '.$self->{errorString});
+		return undef;
+	}
+
+	#split the plugin apart
+	my @plugins=split(/,/ , $self->{ini}->{''}->{$opts{do}});
+
+	#process each one
+	my $int=0;
+	while (defined($plugins[$int])) {
+		my %returned;
+		my $run='use '.$plugins[$int].';'."\n".
+		        'my %returned='.$plugins[$int].'->plugin(\%opts, \%args);';
+		
+		print $run."\n\n\n";
+		
+		#run it
+		my $ran=eval($run);
+		
+		#If we did not get a boolean true, then it failed
+		if (!$ran) {
+			$self->{error}=41;
+			$self->{errorString}='Executing the plugin "'.$plugins[$int].'" failed. $run="'.$run.'"';
+			warn('Plugtools plugins:41: '.$self->{errorString});
+			return undef;
+		}
+		
+		#it errored...
+		if ($returned{error}) {
+			$self->{error}=45;
+			$self->{errorString}='The plugin returned a error. $returned{error}="'.$returned{error}.'" '.
+		 	                     '$returned{errorString}="'.$returned{errorString}.'"';
+			warn('Plugtools plugins:45: '.$self->{errorString});
+			return undef;
+		}
+		
+		$int++;
+	}
+
+	return 1;
+}
+
 =head2 removeUserFromGroups
 
 This removes a user from any group in LDAP they are a member of.
@@ -1916,6 +2113,34 @@ sub userGECOSchange{
 	$entry->delete(gecos=>$gecos);
 	$entry->add(gecos=>$args{gecos});
 
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserGECOSchange})) {
+		$entry=$self->plugin({
+							  ldap=>$ldap,
+							  entry=>$entry,
+							  do=>'pluginUserGECOSchange',
+							  },
+							 \%args);
+		if ($self->{error}) {
+			warn('Plugtools userGECOSchange: plugin errored');
+			return undef;
+		}
+	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserGECOSchange})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginUserGECOSchange',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools userGECOSchange: plugin errored');
+			return undef;
+		}
+	}
+
 	#update the entry
 	my $mesg2=$entry->update($ldap);
 	if (!$mesg2->{errorMessage} eq '') {
@@ -2025,6 +2250,21 @@ sub userSetPass{
 		warn('Plugtools userSetPass:36: '.$self->{errorString});
 		return undef;
 	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserSetPass})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginUserSetPAss',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools userSetPass: plugin errored');
+			return undef;
+		}
+	}
+
 
 	return 1;
 }
@@ -2139,6 +2379,20 @@ sub userGIDchange{
 
 	$entry->delete(gidNumber=>$gid);
 	$entry->add(gidNumber=>$args{gid});
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserGIDchange})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginUserGIDchange',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools userGIDchange: plugin errored');
+			return undef;
+		}
+	}
 
 	#update the entry
 	my $mesg2=$entry->update($ldap);
@@ -2260,6 +2514,20 @@ sub userUIDchange{
 
 	$entry->delete(uidNumber=>$uid);
 	$entry->add(uidNumber=>$args{uid});
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserUIDchange})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginUserGIDchange',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools userUIDchange: plugin errored');
+			return undef;
+		}
+	}
 
 	#update the entry
 	my $mesg2=$entry->update($ldap);
@@ -2446,6 +2714,38 @@ Updating the password for the user failed.
 
 Errored when fetching a list of users that may possibly need updated.
 
+=head2 38
+
+No LDAP object given.
+
+=head2 39
+
+$opts{do} has not been specified.
+
+=head2 40
+
+The specified selection of plugins to run does not exist.
+
+=head2 41
+
+Exectuting a plugin failed.
+
+=head2 42
+
+$opts{entry} is not defined.
+
+=head2 43
+
+$opts{entry} is not a Net::LDAP::Entry object.
+
+=head2 44
+
+$opts{ldap} is not a Net::LDAP object.
+
+=head2 45
+
+$returned{error} is set to true.
+
 =head1 CONFIG FILE
 
 The default is xdg_config_home().'/plugtoolsrc', which wraps
@@ -2579,6 +2879,87 @@ This determines if it should update the primary GIDs for users after groupGIDcha
 has been called.
 
 The default value is '1', true.
+
+=head2 pluginAddGroup
+
+A comma seperated list of plugins to run when addGroup is called.
+
+=head2 pluginAddUser
+
+A comma seperated list of plugins to run when addUser is called.
+
+=head2 pluginGroupAddUser
+
+A comma seperated list of plugins to run when groupAddUser is called.
+
+=head2 pluginGroupGIDchange
+
+A comma seperated list of plugins to run when groupGIDchange is called.
+
+=head2 pluginGroupRemoveUser
+
+A comma seperated list of plugins to run when groupRemoveUser is called.
+
+=head2 pluginUserGECOSchange
+
+A comma seperated list of plugins to run when userGECOSchange is called.
+
+=head2 pluginUserSetPass
+
+A comma seperated list of plugins to run when userSetPass is called.
+
+=head2 pluginUserGIDchange
+
+A comma seperated list of plugins to run when userGIDchange is called.
+
+=head2 pluginUserUIDchange
+
+A comma seperated list of plugins to run when userUIDchange is called.
+
+=head1 PLUGINS
+
+Plugins are supported by the functions specified in the config section.
+
+A plugin may be specified for any of those by setting that value to a comma seperated
+list of plugins. For example if you wanted to call 'Plugtools::Plugins::Dump' and then
+'Foo::Bar' for a userSetPass, you would set the value 'pluginsUserSetPass' equal to
+'Plugtools::Plugins::Dump,Foo::Bar'.
+
+Both hashes specified in the section covering the plugin function. The key 'self' is added
+to %opts before it is passed to the plugin. That key contains a copy of the Plugtools object.
+
+A plugin is a Perl module that is used via eval and then the function 'plugin' is called on
+it. The expected return is 
+
+The plugin is called before the update method is called on a Net::LDAP::Entry object, except for
+the function 'userSetPass'. It is called after the password is updated.
+
+=head2 example
+
+What is shown below is copied from Plugtools::Plugins::Dump. This is a simple plugin
+that calls Data::Dumper->Dumper on what is passed to it.
+
+    package Plugtools::Plugins::Dump;
+    use warnings;
+    use strict;
+    use Data::Dumper;
+    our $VERSION = '0.0.0';
+    sub plugin{
+        my %opts;
+        if(defined($_[1])){
+            %opts= %{$_[1]};
+        };
+        my %args;
+        if(defined($_[2])){
+                %args= %{$_[2]};
+        };
+        print '%opts=...'."\n".Dumper(\%opts)."\n\n".'%args=...'."\n".Dumper(\%args);
+        my %returned;
+        $returned{error}=undef;
+        return %returned;
+    }
+	1;
+
 
 =head1 AUTHOR
 

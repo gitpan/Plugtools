@@ -24,6 +24,7 @@ WriteMakefile(
 							'Term::ReadKey'=>0,
 							'Net::LDAP::Extension::SetPassword'=>0,
 							'String::ShellQuote'=>0,
+							'Data::Dumper'=>0,
 							},
 			  dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
 			  clean               => { FILES => 'Plugtools-*' },
