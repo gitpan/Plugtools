@@ -1,5 +1,11 @@
 Revision history for Plugtools
 
+1.0.1	2009-09-13/12:00
+		-Document Plugtools->new.
+		-Plugtools->new can now read other configs other than the default.
+		-Now call $self->errorblank every where it needs to be called. This fixes
+			the issue of errors being permanent.
+
 1.0.0	2009-09-11/16:20
 		-Add plugin support.
 

@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.0.0
+Version 1.0.1
 
 =cut
 
-our $VERSION = '1.0.0';
+our $VERSION = '1.0.1';
 
 
 =head1 SYNOPSIS
@@ -36,13 +36,46 @@ our $VERSION = '1.0.0';
 
 =head2 new
 
+Initiate Plugtools.
+
+Only one arguement is accepted and that is a hash.
+
+=head3 args hash
+
+At this time, none of these values are required.
+
+=head4 config
+
+This specifies a config file to read other than the default.
+
+    #initilize it and read the default config
+    my $pt=Plugtools->new();
+    if($pt->{error}){
+        print "Error!\n";
+    }
+
+    #initilize it and read '/some/config'
+    my $pt=Plugtools->new({ config=>'/some/config' });
+    if($pt->{error}){
+        print "Error!\n";
+    }
+
 =cut
 
 sub new {
+	my %args;
+	if(defined($_[1])){
+		%args= %{$_[1]};
+	};
+
 	my $self = {error=>undef, errorString=>""};
 	bless $self;
 
-	$self->readConfig(xdg_config_home().'/plugtoolsrc');
+	if (!defined($args{config})) {
+		$args{config}=xdg_config_home().'/plugtoolsrc';
+	}
+
+	$self->readConfig($args{config});
  
 	return $self;
 }
@@ -567,6 +600,9 @@ sub deleteGroup{
 	my $self=$_[0];
 	my $group=$_[1];
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#error if we don't have a group name
 	if (!defined($group)) {
 		$self->{error}=6;
@@ -672,6 +708,9 @@ sub deleteUser{
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#make sure a group if specifed
 	if (!defined($args{user})) {
@@ -809,6 +848,9 @@ sub findGroupDN{
 	my $self=$_[0];
 	my $group=$_[1];
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#make sure a group if specifed
 	if (!defined($group)) {
 		$self->{error}=6;
@@ -867,6 +909,9 @@ This locates a DN for a already setup group.
 sub findUserDN{
 	my $self=$_[0];
 	my $user=$_[1];
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#make sure a group if specifed
 	if (!defined($user)) {
@@ -946,6 +991,9 @@ sub groupAddUser{
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error if we don't have a group name
 	if (!defined($args{group})) {
@@ -1077,6 +1125,9 @@ sub groupGIDchange {
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error if we don't have a group name
 	if (!defined($args{group})) {
@@ -1272,6 +1323,9 @@ sub groupRemoveUser{
 		%args= %{$_[1]};
 	};
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#error if we don't have a group name
 	if (!defined($args{group})) {
 		$self->{error}=6;
@@ -1393,6 +1447,9 @@ sub groupClean{
 		%args= %{$_[1]};
 	};
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#connect to the LDAP server
 	my $ldap=$self->connect();
 	if ($self->{error}) {
@@ -1490,6 +1547,9 @@ sub isLDAPgroup{
 	my $self=$_[0];
 	my $group=$_[1];
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#make sure a group if specifed
 	if (!defined($group)) {
 		$self->{error}=6;
@@ -1549,6 +1609,9 @@ This tests if a group is in LDAP or not.
 sub isLDAPuser{
 	my $self=$_[0];
 	my $user=$_[1];
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#make sure a group if specifed
 	if (!defined($user)) {
@@ -1627,6 +1690,9 @@ sub onlyMember{
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error is no group is specified
 	if (!defined($args{user})) {
@@ -1731,6 +1797,9 @@ sub plugin{
 	if(defined($_[2])){
 		%args= %{$_[2]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error if no LDAP connection is present
 	if (!defined($opts{ldap})) {
@@ -1837,6 +1906,9 @@ No checks are made to see if the user exists or not.
 sub removeUserFromGroups{
 	my $self=$_[0];
 	my $user=$_[1];
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#make sure a group if specifed
 	if (!defined($user)) {
@@ -2054,6 +2126,9 @@ sub userGECOSchange{
 		%args= %{$_[1]};
 	};
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#error if we don't have a group name
 	if (!defined($args{user})) {
 		$self->{error}=5;
@@ -2191,6 +2266,9 @@ sub userSetPass{
 		%args= %{$_[1]};
 	};
 
+	#blank any previous errors
+	$self->errorblank;
+
 	#error if we don't have a group name
 	if (!defined($args{user})) {
 		$self->{error}=5;
@@ -2303,6 +2381,9 @@ sub userGIDchange{
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error if we don't have a group name
 	if (!defined($args{user})) {
@@ -2447,6 +2528,9 @@ sub userUIDchange{
 	if(defined($_[1])){
 		%args= %{$_[1]};
 	};
+
+	#blank any previous errors
+	$self->errorblank;
 
 	#error if we don't have a group name
 	if (!defined($args{user})) {
@@ -2749,7 +2833,15 @@ $returned{error} is set to true.
 =head1 CONFIG FILE
 
 The default is xdg_config_home().'/plugtoolsrc', which wraps
-around to "~/.config/plugtoolsrc".
+around to "~/.config/plugtoolsrc". The file format is ini.
+
+The only required ones are 'bind', 'pass', 'groupbase', and
+'userbase'.
+
+    bind=cn=admin,dc=foo,dc=bar
+    pass=somebl00dyp@ssw0rd
+    userbase=ou=users,dc=foo,dc=bar
+    groupbase=ou=groups,dc=foo,dc=bar
 
 =head2 bind
 
