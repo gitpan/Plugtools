@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.0.1
+Version 1.0.2
 
 =cut
 
-our $VERSION = '1.0.1';
+our $VERSION = '1.0.2';
 
 
 =head1 SYNOPSIS
@@ -1847,7 +1847,7 @@ sub plugin{
 	#make sure the specified config exists
 	if (!defined( $self->{ini}->{''}->{$opts{do}} )) {
 		$self->{error}=40;
-		$self->{errorString}='The variable "'.$opts{40}.'" does not exist in the config';
+		$self->{errorString}='The variable "'.$opts{do}.'" does not exist in the config';
 		warn('Plugtools plugin:40: '.$self->{errorString});
 		return undef;
 	}
@@ -1861,8 +1861,6 @@ sub plugin{
 		my %returned;
 		my $run='use '.$plugins[$int].';'."\n".
 		        'my %returned='.$plugins[$int].'->plugin(\%opts, \%args);';
-		
-		print $run."\n\n\n";
 		
 		#run it
 		my $ran=eval($run);
@@ -2334,15 +2332,26 @@ sub userSetPass{
 		$self->plugin({
 					   ldap=>$ldap,
 					   entry=>$entry,
-					   do=>'pluginUserSetPAss',
+					   do=>'pluginUserSetPass',
 					   },
 					  \%args);
 		if ($self->{error}) {
 			warn('Plugtools userSetPass: plugin errored');
 			return undef;
 		}
+	}else {
+		return 1;
 	}
 
+	#update the entry
+	my $mesg3=$entry->update($ldap);
+	if (!$mesg3->{errorMessage} eq '') {
+		$self->{error}=34;
+		$self->{errorString}='Calling the update method on the entry, "'.$entry->dn.'", failed. $mesg3->{errorMessage}="'.
+		                     $mesg3->{errorMessage}.'"';
+		warn('Plugtools userSetPass:34: '.$self->{errorString});
+		return undef;
+	}
 
 	return 1;
 }
@@ -2829,6 +2838,11 @@ $opts{ldap} is not a Net::LDAP object.
 =head2 45
 
 $returned{error} is set to true.
+
+=head2 46
+
+Calling the LDAP update function on the entry modified by the userSetPass
+plugin failed. The unix password has been set though.
 
 =head1 CONFIG FILE
 

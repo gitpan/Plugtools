@@ -1,5 +1,11 @@
 Revision history for Plugtools
 
+1.0.2	2009-09-14/
+		-Correct a undefined error when the config value does not exist.
+		-Correct the do requested for the plugin handling for userSetPass
+		-Remove unneeded print in the plugin method.
+		-Call update if needed for the userSetPass plugin stuff.
+
 1.0.1	2009-09-13/12:00
 		-Document Plugtools->new.
 		-Plugtools->new can now read other configs other than the default.
