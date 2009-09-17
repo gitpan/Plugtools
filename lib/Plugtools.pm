@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.0.2
+Version 1.1.0
 
 =cut
 
-our $VERSION = '1.0.2';
+our $VERSION = '1.1.0';
 
 
 =head1 SYNOPSIS
@@ -955,6 +955,87 @@ sub findUserDN{
 	
 	#if we get here, it means we have a entry... thus we have a DN
 	return $entry->dn;
+}
+
+=head2 getUserEntry
+
+Fetch a Net::LDAP::Entry object of a user.
+
+=head3 args hash
+
+=head4 user
+
+This is the user to fetch a Net::LDAP::Entry
+of.
+
+    my $entry=$pt->getUserEntry({
+                                 user=>'someUser',
+                                 });
+    if($pt->{error}){
+        print "Error!\n";
+    }
+
+=cut
+
+sub getUserEntry{
+	my $self=$_[0];
+	my %args;
+	if(defined($_[1])){
+		%args= %{$_[1]};
+	};
+
+
+	#blank any previous errors
+	$self->errorblank;
+
+	#error if we don't have a group name
+	if (!defined($args{user})) {
+		$self->{error}=5;
+		$self->{errorString}='No user name specified';
+		warn('Plugtools getUserEntry:5: '.$self->{errorString});
+		return undef;
+	}
+
+	#error if the user already exists
+	my ($name,$passwd,$uid,$gid,$quota,$comment,$gecos,$dir,$shell,$expire) = getpwnam($args{user});
+	if (!defined($name)) {
+		$self->{error}=17;
+		$self->{errorString}='The user "'.$args{user}.'" does not exists';
+		warn('Plugtools getUserEntry:17: '.$self->{errorString});
+		return undef;
+	}
+
+	#connect to the LDAP server
+	my $ldap=$self->connect();
+	if ($self->{error}) {
+		warn('Plugtools getUserEntry: Failed to connect to LDAP');
+		return undef;
+	}
+
+	#search and get the first entry
+	my $mesg=$ldap->search(
+						   base=>$self->{ini}->{''}->{userbase},
+						   filter=>'(&(uid='.$args{user}.') (uidNumber='.$uid.'))'
+						   );
+	if (!$mesg->{errorMessage} eq '') {
+		$self->{error}=32;
+		$self->{errorString}='Fetching the entry for the user failed under "'.
+		                     $self->{ini}->{''}->{userbase}.'"'.
+		                     $mesg->{errorMessage}.'"';
+		warn('Plugtools userGIDchange:32: '.$self->{errorString});
+		return undef;
+	}
+	my $entry=$mesg->pop_entry;
+
+	if (!defined($entry)) {
+		$self->{error}=18;
+		$self->{errorString}='The user "'.$args{user}.'" was not found under'.
+		                     'the base "'.$self->{ini}->{''}->{userbase}.'"';
+		warn('Plugtools getUserEntry:18: '.$self->{errorString});
+		return undef;
+	}
+
+	return $entry;
 }
 
 =head2 groupAddUser
