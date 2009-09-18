@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.2.0
+Version 1.2.1
 
 =cut
 
-our $VERSION = '1.2.0';
+our $VERSION = '1.2.1';
 
 
 =head1 SYNOPSIS
@@ -650,7 +650,9 @@ sub deleteGroup{
 					   entry=>$entry,
 					   do=>'pluginDeleteGroup',
 					   },
-					  \%args);
+					  {
+					   group=>$group,
+					   });
 		if ($self->{error}) {
 			warn('Plugtools deleteGroup: plugin errored');
 			return undef;

@@ -1,5 +1,8 @@
 Revision history for Plugtools
 
+1.2.1	2009-09-18/03:10
+		-Correct a small error with the args passed to the plugin for 'deleteGroup'.
+
 1.2.0	2009-09-18/03:00
 		-Add plugin support for 'deleteUser' and 'deleteGroup'.
 
