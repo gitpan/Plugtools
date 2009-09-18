@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.1.0
+Version 1.2.0
 
 =cut
 
-our $VERSION = '1.1.0';
+our $VERSION = '1.2.0';
 
 
 =head1 SYNOPSIS
@@ -643,6 +643,20 @@ sub deleteGroup{
 		return undef;
 	}
 
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginDeleteGroup})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginDeleteGroup',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools deleteGroup: plugin errored');
+			return undef;
+		}
+	}
+
 	#delete the entry
 	$entry->delete();
 	$mesg=$entry->update($ldap);
@@ -776,6 +790,21 @@ sub deleteUser{
 			return undef;
 		}
 	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginDeleteUser})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginDeleteUser',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools deleteUser: plugin errored');
+			return undef;
+		}
+	}
+
 
 	#delete the entry
 	$entry->delete();
@@ -3102,6 +3131,14 @@ A comma seperated list of plugins to run when userGIDchange is called.
 =head2 pluginUserUIDchange
 
 A comma seperated list of plugins to run when userUIDchange is called.
+
+=head2 pluginDeleteUser
+
+A comma seperated list of plugins to run when deleteUser is called.
+
+=head2 pluginDeleteGroup
+
+A comma seperated list of plugins to run when deleteGroup is called.
 
 =head1 PLUGINS
 

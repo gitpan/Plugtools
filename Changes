@@ -1,6 +1,9 @@
 Revision history for Plugtools
 
-1.1.0	2009-09-17/:
+1.2.0	2009-09-18/03:00
+		-Add plugin support for 'deleteUser' and 'deleteGroup'.
+
+1.1.0	2009-09-17/
 		-Add 'getUserEntry'.
 
 1.0.2	2009-09-14/
