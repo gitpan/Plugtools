@@ -31,7 +31,7 @@ $Getopt::Std::STANDARD_HELP_VERSION = 1;
 
 #version function
 sub main::VERSION_MESSAGE {
-        print "plumod 0.0.0\n";
+        print "plumod 0.1.0\n";
 }
 
 #print help
@@ -48,6 +48,7 @@ sub main::HELP_MESSAGE {
 			  "gecos - Change the GECOS field for a user.\n".
 			  "gid - Change the primary GID for a user.\n".
 			  "uid - Change the UID for a user.\n".
+			  "shell - Change the shell for a user.\n".
 			  "\n".
 			  "For more info, see the the perldocs for Plugtools and plurm...\n".
 			  "perldoc plurm\n".
@@ -56,21 +57,21 @@ sub main::HELP_MESSAGE {
 
 #gets the options
 my %opts=();
-getopts('u:a:g:U:c:l', \%opts);
+getopts('u:a:g:U:c:ls:', \%opts);
 
 if (!defined($opts{u})) {
-	warn('plgrm:254: No user name specified');
+	warn('plumod:254: No user name specified');
 	exit 254;
 }
 
 if (!defined($opts{u})) {
-	warn('plgrm:253: No action specified');
+	warn('plumod:253: No action specified');
 	exit 253;
 }
 
 my $pt=Plugtools->new;
 if ($pt->{error}) {
-	warn('plgrm: Failed to initialize the Plugtools object');
+	warn('plumod: Failed to initialize the Plugtools object');
 	exit $pt->{error};
 }
 
@@ -81,7 +82,19 @@ if ($opts{a} eq 'gecos') {
 						  dump=>$opts{l},
 						  });
 	if ($pt->{error}) {
-		warn('plgrm: Failed to remove the group');
+		warn('plumod: Failed to modify the user');
+		exit $pt->{error};
+	}
+}
+
+if ($opts{a} eq 'shell') {
+	$pt->userShellChange({
+						  user=>$opts{u},
+						  shell=>$opts{s},
+						  dump=>$opts{l},
+						  });
+	if ($pt->{error}) {
+		warn('plumod: Failed to modify the the user');
 		exit $pt->{error};
 	}
 }
@@ -93,7 +106,7 @@ if ($opts{a} eq 'gid') {
 						  dump=>$opts{l},
 						  });
 	if ($pt->{error}) {
-		warn('plgrm: Failed to remove the group');
+		warn('plumod: Failed to modify the user');
 		exit $pt->{error};
 	}
 }
@@ -105,7 +118,7 @@ if ($opts{a} eq 'uid') {
 						  dump=>$opts{l},
 						  });
 	if ($pt->{error}) {
-		warn('plgrm: Failed to remove the group');
+		warn('plumod: Failed to fail to modify the user');
 		exit $pt->{error};
 	}
 }
@@ -118,15 +131,54 @@ plumod - Modify a user in LDAP.
 
 =head1 SYNOPSIS
 
-plurm B<-u> <user> [B<-H> (0|1)] [B<-G> (0|1)]
+plumod B<-a> gecos B<-u> <user> B<-c> <gecos> [B<-l>]
+plumod B<-a> gid B<-u> <user> B<-g> <GID> [B<-l>]
+plumod B<-a> shell B<-u> <user> B<-s> <shell> [B<-l>]
+plumod B<-a> uid B<-u> <user> B<-U> <UID> [B<-l>]
 
 =head1 SWITCHES
 
+=head2 -a <action>
+
+The action to perfom.
+
+=head3 actions
+
+=head4 gecos
+
+Change the GECOS for a user.
+
+=head4 gid
+
+Change the gid for a user.
+
+=head4 shell
+
+Change the shell for a user.
+
+=head4 uid
+
+Change the UID for a user.
+
+=head2 -c <gecos>
+
+Specifiy the new GECOS for a user.
+
+=head2 -g <GID>
+
+The new GID for a user.
+
+=head2 -s <shell>
+
+The new shell for a user.
+
 =head2 -u <user>
 
-This specifies the user to remove.
+This specifies the user to modify.
 
+=head2 -U <UID>
 
+The new UID for a user.
 
 =head1 EXIT CODES
 
@@ -142,7 +194,7 @@ No action specified.
 
 =head1 AUTHOR
 
-Copyright (c) 2009, Zame C. Bowers <vvelox@vvelox.net>
+Copyright (c) 2010, Zame C. Bowers <vvelox@vvelox.net>
 
 All rights reserved.
 

@@ -18,11 +18,11 @@ Plugtools - LDAP and Posix
 
 =head1 VERSION
 
-Version 1.2.1
+Version 1.3.0
 
 =cut
 
-our $VERSION = '1.2.1';
+our $VERSION = '1.3.0';
 
 
 =head1 SYNOPSIS
@@ -68,7 +68,7 @@ sub new {
 		%args= %{$_[1]};
 	};
 
-	my $self = {error=>undef, errorString=>""};
+	my $self = {error=>undef, errorString=>"", module=>'Plugtools'};
 	bless $self;
 
 	if (!defined($args{config})) {
@@ -76,7 +76,7 @@ sub new {
 	}
 
 	$self->readConfig($args{config});
- 
+
 	return $self;
 }
 
@@ -567,7 +567,7 @@ sub connect{
 			                     $mesg->{errorMessage}.'"';
 			warn('Plugtools connect:13: '.$self->{errorString});
 			return undef;
-	}
+		}
 	}
 
 	#bind
@@ -2345,6 +2345,151 @@ sub userGECOSchange{
 	return 1;
 }
 
+=head2 userShellChange
+
+This changes the UID for a user.
+
+=head3 args hash
+
+=head4 user
+
+The user to act on.
+
+=head4 shell
+
+The shell to change this user to.
+
+=head4 dump
+
+Call the dump method on the group afterwards.
+
+    $pt->userShellChange({
+                          user=>'someUser',
+                          shell=>'/bin/tcsh',
+                          });
+    if($pt->error){
+        print "Error!\n";
+    }
+
+=cut
+
+sub userShellChange{
+	my $self=$_[0];
+	my %args;
+	if(defined($_[1])){
+		%args= %{$_[1]};
+	}
+	my $method='userShellChange';
+
+	#blank any previous errors
+	$self->errorblank;
+
+	#error if we don't have a group name
+	if (!defined($args{user})) {
+		$self->{error}=5;
+		$self->{errorString}='No user name specified';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+
+	#error if no user has been specified
+	if (!defined($args{shell})){
+		$self->{error}=47;
+		$self->{errorString}='No shell specified';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+
+	#error if the user already exists
+	my ($name,$passwd,$uid,$gid,$quota,$comment,$gecos,$dir,$shell,$expire) = getpwnam($args{user});
+	if (!defined($name)) {
+		$self->{error}=17;
+		$self->{errorString}='The user "'.$args{user}.'" does not exists';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+
+	#connect to the LDAP server
+	my $ldap=$self->connect();
+	if ($self->{error}) {
+		warn('Plugtools userGECOSchange: Failed to connect to LDAP');
+		return undef;
+	}
+
+	#search and get the first entry
+	my $mesg=$ldap->search(
+						   base=>$self->{ini}->{''}->{userbase},
+						   filter=>'(&(uid='.$args{user}.') (uidNumber='.$uid.'))'
+						   );
+	if (!$mesg->{errorMessage} eq '') {
+		$self->{error}=32;
+		$self->{errorString}='Fetching the entry for the user failed under "'.
+		                     $self->{ini}->{''}->{groupbase}.'"'.
+		                     $mesg->{errorMessage}.'"';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+	my $entry=$mesg->pop_entry;
+	
+	#if $entry is not defined or does not exist under the specified base
+	if (!defined($entry)) {
+		$self->{error}=18;
+		$self->{errorString}='The user "'.$args{user}.'" does not exist in specified group base, "'.
+		                     $self->{ini}->{''}->{userbase}.'", ';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+
+	$entry->delete(loginShell=>$shell);
+	$entry->add(loginShell=>$args{shell});
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserShellChange})) {
+		$entry=$self->plugin({
+							  ldap=>$ldap,
+							  entry=>$entry,
+							  do=>'pluginUserShellChange',
+							  },
+							 \%args);
+		if ($self->{error}) {
+			warn('Plugtools userShellChange: plugin errored');
+			return undef;
+		}
+	}
+
+	#call a plugin if needed
+	if (defined($self->{ini}->{''}->{pluginUserShellChange})) {
+		$self->plugin({
+					   ldap=>$ldap,
+					   entry=>$entry,
+					   do=>'pluginUserShellChange',
+					   },
+					  \%args);
+		if ($self->{error}) {
+			warn('Plugtools userShellChange: plugin errored');
+			return undef;
+		}
+	}
+
+	#update the entry
+	my $mesg2=$entry->update($ldap);
+	if (!$mesg2->{errorMessage} eq '') {
+		$self->{error}=34;
+		$self->{errorString}='Changing the Shell to "'.$args{shell}.'" from "'.$shell
+		                     .'" for  "'.$entry->dn.'" failed. $mesg2->{errorMessage}="'.
+		                     $mesg2->{errorMessage}.'"';
+		warn($self->{module}.' '.$method.':'.$self->error.': '.$self->errorString);
+		return undef;
+	}
+
+	#dump the entry if asked
+	if ($args{dump}) {
+		$entry->dump;
+	}
+
+	return 1;
+}
+
 =head2 userSetPass
 
 This changes the password for a user.
@@ -2753,6 +2898,23 @@ sub userUIDchange{
 	return 1;
 }
 
+=head2 error
+
+Returns the current error code and true if there is an error.
+
+If there is no error, undef is returned.
+
+    my $error=$foo->error;
+    if($error){
+        print 'error code: '.$error."\n";
+    }
+
+=cut
+
+sub error{
+    return $_[0]->{error};
+}
+
 =head2 errorblank
 
 This is a internal function and should not be called.
@@ -2767,7 +2929,23 @@ sub errorblank{
 	$self->{errorString}="";
 
 	return 1;
-};
+}
+
+=head2 errorString
+
+Returns the error string if there is one. If there is not,
+it will return ''.
+
+    my $error=$foo->error;
+    if($error){
+        print 'error code:'.$error.': '.$foo->errorString."\n";
+    }
+
+=cut
+
+sub errorString{
+    return $_[0]->{errorString};
+}
 
 =head1 ERROR CODES
 
@@ -2956,6 +3134,10 @@ $returned{error} is set to true.
 Calling the LDAP update function on the entry modified by the userSetPass
 plugin failed. The unix password has been set though.
 
+=head2 47
+
+No shell specified.
+
 =head1 CONFIG FILE
 
 The default is xdg_config_home().'/plugtoolsrc', which wraps
@@ -3130,6 +3312,10 @@ A comma seperated list of plugins to run when userSetPass is called.
 
 A comma seperated list of plugins to run when userGIDchange is called.
 
+=head2 pluginUserShellChange
+
+A comma seperated list of plugins to run when userShellChange is called.
+
 =head2 pluginUserUIDchange
 
 A comma seperated list of plugins to run when userUIDchange is called.
@@ -3235,7 +3421,7 @@ L<http://search.cpan.org/dist/Plugtools/>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009 Zane C. Bowers, all rights reserved.
+Copyright 2010 Zane C. Bowers, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
